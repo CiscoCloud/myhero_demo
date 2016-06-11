@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 from __future__ import print_function
-from pprint import pprint
 
 import os
 import sys
@@ -14,7 +13,7 @@ PY3 = sys.version_info[0] > 2 #creates boolean value for test that Python major 
 
 class Defaults:
     MANTL_URI = 'https://mantlsandbox.cisco.com'
-    MARATHON_API = '{0}/marathon/api/v2'
+    MARATHON_API = '{0}/marathon/v2/apps'
     APP_SUFFIX = 'app.mantldevnetsandbox.com'
 
 class MyHeroInstall():
@@ -24,9 +23,15 @@ class MyHeroInstall():
         print("|**************************************************|")
         print("|Welcome to the MyHero app install script|")
         print("|**************************************************|")
+
         self.marathon_uri = Defaults.MARATHON_API.format(args.mantl_uri)
         self.auth = (args.username, args.password)
         self.req_headers = {'Content-type': 'application/json'}
+
+        print()
+        print("Marathon endpoint: {}".format(self.marathon_uri))
+        print("Username: {}".format(args.username))
+        print()
 
     def deploy_data_service(self):
 
@@ -37,10 +42,13 @@ class MyHeroInstall():
         with open('sample-myhero-data.json') as sample:
             data = json.load(sample)
 
+        print("Sending JSON:\n", json.dumps(data, indent=2))
+
         resp = requests.post(self.marathon_uri, headers=self.req_headers,
-                             data=json.dumps(data), verify=False)
+                             auth=self.auth, data=json.dumps(data), verify=False)
 
         if 200 == resp.status_code:
+            print
             pprint(resp.json)
         else:
             self.handle_error(resp)
@@ -62,6 +70,15 @@ class MyHeroInstall():
 
         # Just for testing
         time.sleep(5)
+
+    def handle_error(self, resp):
+        if 400 <= resp.status_code and resp.status_code < 500:
+            print("ERROR: Request error, status=%d" % (resp.status_code), file=sys.stderr)
+        else:
+            print("ERROR: Server error, status=%d" % (resp.status_code), file=sys.stderr)
+
+        sys.exit(1)
+
 
 if __name__ == '__main__':
 
